@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>二下國語句型造句挑戰</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .word-chip {
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .word-chip:hover:not(.selected) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .word-chip.selected {
+            opacity: 0.2;
+            cursor: not-allowed;
+            background-color: #f1f5f9;
+            border-color: #e2e8f0;
+        }
+        .drop-zone {
+            min-height: 100px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 1rem;
+            background-color: #f8fafc;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 1rem;
+            align-content: flex-start;
+        }
+        .lesson-card {
+            transition: all 0.3s;
+        }
+        .lesson-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans">
+    <div id="app" class="max-w-2xl mx-auto p-4 md:p-8">
+        
+        <!-- 1. 課次選擇頁面 -->
+        <div id="lobby" class="block">
+            <header class="text-center mb-10">
+                <h1 class="text-4xl font-black text-blue-600 mb-2">造句語詞排列練習</h1>
+                <p class="text-slate-500">請點擊課次開始挑戰</p>
+            </header>
+            <div id="lesson-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <!-- 由 JS 動態生成 -->
+            </div>
+        </div>
+
+        <!-- 2. 挑戰區域 -->
+        <div id="game-view" class="hidden">
+            <header class="text-center mb-6">
+                <div class="flex justify-between items-center mb-6">
+                    <button id="back-to-lobby" class="bg-white px-4 py-2 rounded-full shadow-sm text-slate-600 hover:text-blue-600 transition flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg> 返回
+                    </button>
+                    <h2 class="text-2xl font-bold text-blue-700">第 <span id="round-num">1</span> / <span id="total-rounds">0</span> 題</h2>
+                    <div class="w-20"></div>
+                </div>
+
+                <!-- 句型提示區 (關鍵更新) -->
+                <div class="bg-indigo-50 border-l-4 border-indigo-500 p-6 rounded-r-xl shadow-sm text-left mb-6">
+                    <div class="mb-3">
+                        <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">樣本句型</span>
+                        <p id="sample-sentence" class="text-xl font-bold text-indigo-900 mt-1"></p>
+                    </div>
+                    <div class="mb-3">
+                        <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">句型結構</span>
+                        <p id="sentence-structure" class="text-md text-indigo-800 font-medium"></p>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">說明</span>
+                        <p id="sentence-desc" class="text-sm text-slate-600"></p>
+                    </div>
+                </div>
+            </header>
+
+            <main>
+                <div class="bg-white p-6 rounded-2xl shadow-sm mb-6">
+                    <div id="sentence-builder" class="drop-zone">
+                        <p id="placeholder-text" class="text-slate-300 w-full text-center py-4">請依正確順序點擊下方語詞</p>
+                    </div>
+                    <button id="reset-btn" class="w-full mt-4 bg-slate-200 text-slate-600 font-bold py-2 rounded-xl hover:bg-slate-300 transition">清除重排</button>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm mb-6">
+                    <div id="word-pool" class="flex flex-wrap justify-center gap-3"></div>
+                </div>
+
+                <button id="check-btn" class="w-full bg-green-600 text-white text-xl font-bold py-4 rounded-2xl hover:bg-green-700 shadow-lg transition active:scale-95">送出答案</button>
+                <div id="feedback" class="hidden mt-4 p-4 rounded-xl text-center font-bold"></div>
+            </main>
+        </div>
+
+        <!-- 3. 結算頁面 -->
+        <div id="review-page" class="hidden">
+            <div class="bg-white p-8 rounded-3xl shadow-xl text-center border-t-8 border-blue-500">
+                <div class="text-6xl mb-4" id="result-emoji">🎉</div>
+                <h2 class="text-3xl font-black text-slate-800 mb-2">挑戰完成！</h2>
+                <div class="text-5xl font-black text-blue-600 my-6"><span id="final-score">0</span> 分</div>
+                
+                <div class="bg-slate-50 p-5 rounded-2xl mb-8 text-left">
+                    <p class="font-bold text-slate-700 mb-3">正確句子回顧：</p>
+                    <div id="review-list" class="space-y-2 max-h-60 overflow-y-auto"></div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="go-lobby-final" class="flex-1 bg-blue-600 text-white font-bold py-4 rounded-2xl hover:bg-blue-700 transition shadow-md">回課次選單</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; 
+
+        // 包含結構與樣本的完整資料
+        const lessonData = {
+            1: {
+                structure: "如果 + 事件(1)，就 + 事件(2)",
+                desc: "「如果」是假設，「就」是事件發生時的結果。",
+                sample: "如果風兒輕輕吹，種子就能飛呀飛。",
+                quizzes: [
+                    { words: ["如果", "大雨", "一直下", "，", "我們", "就", "不能", "到操場", "跑步", "。"], correct: "如果大雨一直下，我們就不能到操場跑步。" },
+                    { words: ["如果", "門鈴", "響起", "，", "小狗", "就會", "開心地", "到門口", "迎接", "客人", "。"], correct: "如果門鈴響起，小狗就會開心地到門口迎接客人。" }
+                ]
+            },
+            2: {
+                structure: "A + 像 + B + 一樣 + 動作",
+                desc: "用相似的事物（珍珠、小狗）來形容動作的樣子。",
+                sample: "我落在大大的荷葉上，像珍珠一樣滾來滾去。",
+                quizzes: [
+                    { words: ["弟弟", "在公園裡", "，", "像", "小狗", "一樣", "跑來跑去", "。"], correct: "弟弟在公園裡，像小狗一樣跑來跑去。" },
+                    { words: ["妹妹", "在彈跳床上", "，", "像", "青蛙", "一樣", "跳來跳去", "。"], correct: "妹妹在彈跳床上，像青蛙一樣跳來跳去。" }
+                ]
+            },
+            3: {
+                structure: "當我 + 快要...的時候，終於 + 結果",
+                desc: "表達兩個事件同時發生，或經歷過程後的結果。",
+                sample: "當我快要飛不動的時候，終於到北方了。",
+                quizzes: [
+                    { words: ["當我", "回到家", "的時候", "，", "聞到了", "飯菜的", "香味", "。"], correct: "當我回到家的時候，聞到了飯菜的香味。" },
+                    { words: ["當我", "走出學校", "的時候", "，", "公車", "剛好", "到站", "。"], correct: "當我走出學校的時候，公車剛好到站。" }
+                ]
+            },
+            4: {
+                structure: "到底 + 事件 + A？ + B？ + 還是 + C？",
+                desc: "用「到底」表達疑問，想知道真正的答案。",
+                sample: "到底這一場雨，下得多？下得少？還是剛剛好？",
+                quizzes: [
+                    { words: ["貓咪", "到底", "躲在", "哪裡", "？"], correct: "貓咪到底躲在哪裡？" },
+                    { words: ["弟弟", "到底", "要不要", "跟我們", "去打球", "？"], correct: "弟弟到底要不要跟我們去打球？" }
+                ]
+            },
+            5: {
+                structure: "雖然 + 事件(1)，卻 + 事件(2)",
+                desc: "表示實際發生的情況和預想中的不同。",
+                sample: "明光雖然想換工作，卻不知道跟誰說。",
+                quizzes: [
+                    { words: ["今天", "雖然", "出了", "太陽", "，", "溫度", "卻", "很低", "。"], correct: "今天雖然出了太陽，溫度卻很低。" },
+                    { words: ["雖然", "妹妹", "已經學會", "騎單車", "，", "卻", "騎得", "不穩", "。"], correct: "雖然妹妹已經學會騎單車，卻騎得不穩。" }
+                ]
+            },
+            6: {
+                structure: "A + 比 + B + 更... + 也更...",
+                desc: "比較兩者的狀態，強調程度的變化。",
+                sample: "大家的回答比前一次更完整，也更有禮貌了。",
+                quizzes: [
+                    { words: ["今年的", "夏天", "比去年", "更熱了", "。"], correct: "今年的夏天比去年更熱了。" },
+                    { words: ["妹妹", "游泳的", "速度", "比以前", "更快了", "。"], correct: "妹妹游泳的速度比以前更快了。" }
+                ]
+            },
+            7: {
+                structure: "為了 + 目的，人 + 動作",
+                desc: "說明做某件事情背後的目標或目的。",
+                sample: "為了畫出彩虹，姐妹兩人多次把不同顏料加在一起。",
+                quizzes: [
+                    { words: ["為了", "出去玩", "，", "妹妹", "今天", "特別", "早起", "。"], correct: "為了出去玩，妹妹今天特別早起。" },
+                    { words: ["為了", "做出", "美味的", "料理", "，", "媽媽", "買了", "許多", "食譜", "來參考", "。"], correct: "為了做出美味的料理，媽媽買了許多食譜來參考。" }
+                ]
+            },
+            8: {
+                structure: "聽到 + 地方 + 傳來 + 聲音，我 + 反應",
+                desc: "描述感官覺知與隨後的聯想或行動。",
+                sample: "聽到操場傳來同學們開心的笑聲，我也想過去玩。",
+                quizzes: [
+                    { words: ["聽到", "操場", "傳來", "同學", "開心的", "笑聲", "，", "我也想", "過去", "和他們", "一起玩", "。"], correct: "聽到操場傳來同學們開心的笑聲，我也想過去和他們一起玩。" },
+                    { words: ["聽到", "廚房", "傳來", "切菜的", "聲音", "，", "我", "知道", "晚餐時間", "快到了", "。"], correct: "聽到廚房傳來切菜的聲音，我知道晚餐時間快到了。" }
+                ]
+            },
+            9: {
+                structure: "經過 + 過程，終於 + 結果",
+                desc: "強調在一段努力或時間之後得到的收穫。",
+                sample: "經過一次又一次的失敗，愛迪生終於改良出電燈。",
+                quizzes: [
+                    { words: ["經過", "一次又一次", "的", "練習", "，", "我", "終於", "學會", "騎腳踏車", "。"], correct: "經過一次又一次的練習，我終於學會騎腳踏車。" },
+                    { words: ["經過", "一次又一次", "的", "嘗試", "，", "哥哥", "終於", "考進", "籃球隊", "。"], correct: "經過一次又一次的嘗試，哥哥終於考進籃球隊。" }
+                ]
+            },
+            10: {
+                structure: "事件(1)，只好 + 事件(2)",
+                desc: "在沒有更好的辦法下，選擇了唯一的路徑。",
+                sample: "沒人跟他一起走，小鴨只好自己去找朋友。",
+                quizzes: [
+                    { words: ["哥哥的", "腳踏車", "壞了", "，", "他今天", "只好", "走路", "去上學", "。"], correct: "哥哥的腳踏車壞了，他今天只好走路去上學。" },
+                    { words: ["小明", "忘了帶", "鉛筆", "，", "他只好", "先跟", "同學", "借來", "用", "。"], correct: "小明忘了帶鉛筆去學校，他只好先跟同學借來用。" }
+                ]
+            },
+            11: {
+                structure: "一 + 發現(1)，就 + 反應(2)",
+                desc: "說明事件(1)發生後，緊接著發生事件(2)。",
+                sample: "鴿子媽媽一發現蛋上的裂痕，就心急的到處求救。",
+                quizzes: [
+                    { words: ["爸爸", "一回到家", "，", "就", "先去", "洗手", "。"], correct: "爸爸一回到家，就先去洗手。" },
+                    { words: ["媽媽", "一看到", "相片", "，", "就", "想起", "童年", "往事", "。"], correct: "媽媽一看到相片，就想起童年往事。" }
+                ]
+            },
+            12: {
+                structure: "要 + 條件，才 + 結果",
+                desc: "強調必須先達成某種前置條件，才能得到結果。",
+                sample: "姑娘要吳剛把桂樹先砍倒，才教他減重妙招。",
+                quizzes: [
+                    { words: ["堂姐", "要我", "自己", "先想一想", "，", "才", "告訴我", "謎題的", "答案", "。"], correct: "堂姐要我自己先想一想，才告訴我謎題的答案。" },
+                    { words: ["叔叔", "要我", "說一句", "吉祥話", "，", "才", "給我", "壓歲錢", "。"], correct: "叔叔要我說一句吉祥話，才給我壓歲錢。" }
+                ]
+            }
+        };
+
+        let currentLesson = 1;
+        let currentRoundIdx = 0;
+        let score = 0;
+        let selectedIndices = [];
+        let shuffledWords = [];
+
+        function initLobby() {
+            const grid = document.getElementById('lesson-grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                const card = document.createElement('div');
+                card.className = 'lesson-card bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-center cursor-pointer hover:border-blue-400';
+                card.innerHTML = `
+                    <div class="text-blue-600 font-black text-2xl mb-1">第 ${i} 課</div>
+                    <div class="text-slate-400 text-xs font-bold">句型練習</div>
+                `;
+                card.onclick = () => startLesson(i);
+                grid.appendChild(card);
+            }
+        }
+
+        function startLesson(lessonNum) {
+            currentLesson = lessonNum;
+            currentRoundIdx = 0;
+            score = 0;
+            
+            document.getElementById('lobby').classList.add('hidden');
+            document.getElementById('review-page').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+            
+            const data = lessonData[lessonNum];
+            document.getElementById('sample-sentence').innerText = data.sample;
+            document.getElementById('sentence-structure').innerText = data.structure;
+            document.getElementById('sentence-desc').innerText = data.desc;
+            document.getElementById('total-rounds').innerText = data.quizzes.length;
+            
+            initRound();
+        }
+
+        function initRound() {
+            const lesson = lessonData[currentLesson];
+            if (currentRoundIdx >= lesson.quizzes.length) {
+                showFinalResults();
+                return;
+            }
+
+            const quiz = lesson.quizzes[currentRoundIdx];
+            selectedIndices = [];
+            shuffledWords = quiz.words.map((w, i) => ({ text: w, id: i }))
+                                     .sort(() => Math.random() - 0.5);
+
+            document.getElementById('round-num').innerText = currentRoundIdx + 1;
+            document.getElementById('feedback').className = 'hidden';
+            renderPool();
+            renderBuilder();
+        }
+
+        function renderPool() {
+            const pool = document.getElementById('word-pool');
+            pool.innerHTML = '';
+            shuffledWords.forEach((word, index) => {
+                const isSelected = selectedIndices.includes(index);
+                const btn = document.createElement('button');
+                btn.className = `word-chip px-5 py-3 bg-white border-2 border-blue-200 rounded-2xl text-blue-800 font-bold shadow-sm ${isSelected ? 'selected' : ''}`;
+                btn.innerText = word.text;
+                btn.onclick = () => selectWord(index);
+                pool.appendChild(btn);
+            });
+        }
+
+        function renderBuilder() {
+            const builder = document.getElementById('sentence-builder');
+            const placeholder = document.getElementById('placeholder-text');
+            
+            if (selectedIndices.length === 0) {
+                placeholder.classList.remove('hidden');
+                // 清空除了 placeholder 以外的內容
+                Array.from(builder.children).forEach(child => {
+                    if (child.id !== 'placeholder-text') builder.removeChild(child);
+                });
+            } else {
+                placeholder.classList.add('hidden');
+                // 重新渲染已選語詞
+                Array.from(builder.children).forEach(child => {
+                    if (child.id !== 'placeholder-text') builder.removeChild(child);
+                });
+                selectedIndices.forEach(idx => {
+                    const span = document.createElement('span');
+                    span.className = 'bg-blue-500 text-white px-4 py-2 rounded-xl font-bold shadow-md animate-in fade-in zoom-in duration-200';
+                    span.innerText = shuffledWords[idx].text;
+                    builder.appendChild(span);
+                });
+            }
+        }
+
+        function selectWord(idx) {
+            if (selectedIndices.includes(idx)) return;
+            selectedIndices.push(idx);
+            renderPool();
+            renderBuilder();
+        }
+
+        document.getElementById('reset-btn').onclick = () => {
+            selectedIndices = [];
+            renderPool();
+            renderBuilder();
+        };
+
+        document.getElementById('check-btn').onclick = async () => {
+            if (selectedIndices.length === 0) return;
+
+            const userText = selectedIndices.map(i => shuffledWords[i].text).join('');
+            const correctText = lessonData[currentLesson].quizzes[currentRoundIdx].correct;
+            const feedback = document.getElementById('feedback');
+
+            // 寬鬆比對：忽略標點符號與空白
+            const normalize = (t) => t.replace(/[，。？！、\s]/g, '');
+            
+            if (normalize(userText) === normalize(correctText)) {
+                const pts = Math.round(100 / lessonData[currentLesson].quizzes.length);
+                score += (currentRoundIdx === lessonData[currentLesson].quizzes.length - 1) ? (100 - (pts * currentRoundIdx)) : pts;
+                
+                feedback.innerText = "答對了！非常棒！";
+                feedback.className = "mt-4 p-4 rounded-xl text-center font-bold bg-green-100 text-green-700 block";
+                
+                await speak(correctText);
+                
+                setTimeout(() => {
+                    currentRoundIdx++;
+                    initRound();
+                }, 2000);
+            } else {
+                feedback.innerText = "順序再調整一下喔！";
+                feedback.className = "mt-4 p-4 rounded-xl text-center font-bold bg-red-100 text-red-700 block animate-bounce";
+            }
+        };
+
+        async function speak(text) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `正確句子是：${text}` }] }],
+                        generationConfig: {
+                            responseModalities: ["AUDIO"],
+                            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } } }
+                        }
+                    })
+                });
+                const result = await response.json();
+                const pcmData = result.candidates[0].content.parts[0].inlineData.data;
+                playPCM(pcmData);
+            } catch (e) {
+                const ut = new SpeechSynthesisUtterance(text);
+                ut.lang = 'zh-TW';
+                window.speechSynthesis.speak(ut);
+            }
+        }
+
+        function playPCM(base64Data) {
+            const binaryString = atob(base64Data);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+            const wavHeader = createWavHeader(len, 24000);
+            const blob = new Blob([wavHeader, bytes], { type: 'audio/wav' });
+            new Audio(URL.createObjectURL(blob)).play();
+        }
+
+        function createWavHeader(dataLength, sampleRate) {
+            const buffer = new ArrayBuffer(44);
+            const view = new DataView(buffer);
+            const writeString = (offset, s) => { for (let i = 0; i < s.length; i++) view.setUint8(offset + i, s.charCodeAt(i)); };
+            writeString(0, 'RIFF'); view.setUint32(4, 36 + dataLength, true);
+            writeString(8, 'WAVE'); writeString(12, 'fmt ');
+            view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+            writeString(36, 'data'); view.setUint32(40, dataLength, true);
+            return buffer;
+        }
+
+        function showFinalResults() {
+            document.getElementById('game-view').classList.add('hidden');
+            document.getElementById('review-page').classList.remove('hidden');
+            document.getElementById('final-score').innerText = score;
+            
+            const emoji = document.getElementById('result-emoji');
+            if (score === 100) emoji.innerText = "👑";
+            else if (score >= 60) emoji.innerText = "⭐";
+            else emoji.innerText = "📚";
+
+            const reviewList = document.getElementById('review-list');
+            reviewList.innerHTML = '';
+            lessonData[currentLesson].quizzes.forEach(q => {
+                const div = document.createElement('div');
+                div.className = 'bg-white p-3 rounded-xl border border-slate-100 text-slate-600 flex justify-between items-center text-sm';
+                div.innerHTML = `<span>${q.correct}</span><button class="text-blue-500" onclick="speak('${q.correct}')">🔊</button>`;
+                reviewList.appendChild(div);
+            });
+        }
+
+        document.getElementById('back-to-lobby').onclick = () => {
+            document.getElementById('game-view').classList.add('hidden');
+            document.getElementById('lobby').classList.remove('hidden');
+        };
+        document.getElementById('go-lobby-final').onclick = () => {
+            document.getElementById('review-page').classList.add('hidden');
+            document.getElementById('lobby').classList.remove('hidden');
+        };
+
+        window.onload = initLobby;
+    </script>
+</body>
+</html>
